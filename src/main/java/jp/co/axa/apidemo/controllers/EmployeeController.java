@@ -1,10 +1,17 @@
 package jp.co.axa.apidemo.controllers;
 
+import jp.co.axa.apidemo.common.Const;
 import jp.co.axa.apidemo.entities.Employee;
+import jp.co.axa.apidemo.entities.Result;
+import jp.co.axa.apidemo.enums.ResultEnum;
+import jp.co.axa.apidemo.exception.UserException;
 import jp.co.axa.apidemo.services.EmployeeService;
+import jp.co.axa.apidemo.utils.ResultUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -25,30 +32,40 @@ public class EmployeeController {
     }
 
     @GetMapping("/employees/{employeeId}")
-    public Employee getEmployee(@PathVariable(name="employeeId")Long employeeId) {
+    public Employee getEmployee(@PathVariable(name = Const.EMPLOYEEID) Long employeeId) {
         return employeeService.getEmployee(employeeId);
     }
 
     @PostMapping("/employees")
-    public void saveEmployee(Employee employee){
-        employeeService.saveEmployee(employee);
-        System.out.println("Employee Saved Successfully");
+    public Object saveEmployee(@Valid Employee employee, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return ResultUtil.error(bindingResult.getFieldError().getDefaultMessage());
+        }
+        return ResultUtil.success(employeeService.saveEmployee(employee),ResultEnum.SUCCESS);
     }
 
     @DeleteMapping("/employees/{employeeId}")
-    public void deleteEmployee(@PathVariable(name="employeeId")Long employeeId){
+    public Result deleteEmployee(@PathVariable(name = Const.EMPLOYEEID) Long employeeId) {
         employeeService.deleteEmployee(employeeId);
-        System.out.println("Employee Deleted Successfully");
+        return ResultUtil.success(ResultEnum.SUCCESS);
     }
 
     @PutMapping("/employees/{employeeId}")
-    public void updateEmployee(@RequestBody Employee employee,
-                               @PathVariable(name="employeeId")Long employeeId){
-        Employee emp = employeeService.getEmployee(employeeId);
-        if(emp != null){
-            employeeService.updateEmployee(employee);
+    public Result updateEmployee(@Valid@RequestBody Employee employee,
+                                 @PathVariable(name = Const.EMPLOYEEID) Long employeeId, BindingResult bindingResult) {
+        // TODO MethodArgumentNotValidException
+        if (bindingResult.hasErrors()) {
+            return ResultUtil.error(bindingResult.getFieldError().getDefaultMessage());
         }
 
-    }
+        Employee emp = employeeService.getEmployee(employeeId);
 
+        if (null == emp) {
+            throw new UserException(ResultEnum.DATA_ERROR);
+        }
+        emp.setDepartment(employee.getDepartment());
+        emp.setName(employee.getName());
+        emp.setSalary(employee.getSalary());
+        return ResultUtil.success(employeeService.updateEmployee(emp),ResultEnum.SUCCESS);
+    }
 }
